@@ -1,0 +1,133 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Validate release version
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version=$(python3 scripts/package_release.py --version-only)
+          if [[ "$REF_TYPE" == tag && "$REF_NAME" != "v$version" ]]; then
+            echo "Tag $REF_NAME does not match pom.xml version $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Build and test
+        run: mvn --batch-mode --no-transfer-progress clean verify
+      - name: Package ZIP and SHA-256
+        run: python3 scripts/package_release.py
+      - name: Check the packaged application
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cd dist
+          sha256sum --check "bunker-selfhost-$VERSION.zip.sha256"
+          unzip -q "bunker-selfhost-$VERSION.zip" -d smoke
+          cd "smoke/bunker-selfhost-$VERSION"
+          ./start.sh --server.port=18092 > ../server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in {1..60}; do
+            if curl --fail --silent http://localhost:18092/actuator/health > ../health.json; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            cat ../server.log
+            exit 1
+          fi
+          python3 -c 'import json; assert json.load(open("../health.json"))["status"] == "UP"'
+          curl --fail --silent http://localhost:18092/ > ../index.html
+          curl --fail --silent http://localhost:18092/api/rules/classic > ../classic.json
+          python3 -c 'import json; assert json.load(open("../classic.json"))["id"] == "classic"'
+      - name: Save distribution
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: bunker-selfhost-${{ steps.version.outputs.version }}
+          path: |
+            dist/*.zip
+            dist/*.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  release:
+    needs: build
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: release-${{ needs.build.outputs.version }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: bunker-selfhost-${{ needs.build.outputs.version }}
+          path: dist
+      - name: Publish a new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          cd dist
+          sha256sum --check "bunker-selfhost-$VERSION.zip.sha256"
+          tag="v$VERSION"
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            if [[ "$(git rev-list -n 1 "$tag")" != "$GITHUB_SHA" ]]; then
+              echo "Version $VERSION already belongs to another commit. Increase pom.xml version for a new release."
+              exit 0
+            fi
+          fi
+          published=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq ".[] | select(.tag_name == \"$tag\") | .draft")
+          if [[ "$published" == false ]]; then
+            echo "Release $tag is already published."
+            exit 0
+          fi
+          if [[ "$published" == true ]]; then
+            gh release upload "$tag" "bunker-selfhost-$VERSION.zip" "bunker-selfhost-$VERSION.zip.sha256" --clobber
+            gh release edit "$tag" --draft=false
+          else
+            gh release create "$tag" "bunker-selfhost-$VERSION.zip" "bunker-selfhost-$VERSION.zip.sha256" \
+              --target "$GITHUB_SHA" --title "Бункер $VERSION" --generate-notes
+          fi

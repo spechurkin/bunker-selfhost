@@ -1,0 +1,536 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bunker rule pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "schemaVersion",
+    "id",
+    "name",
+    "rules",
+    "categories",
+    "catastrophes",
+    "bunker",
+    "abilities"
+  ],
+  "properties": {
+    "format": {
+      "const": "bunker"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 4000
+    },
+    "rules": {
+      "$ref": "#/$defs/rules"
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "items": {
+        "$ref": "#/$defs/category"
+      }
+    },
+    "catastrophes": {
+      "$ref": "#/$defs/deck"
+    },
+    "bunker": {
+      "$ref": "#/$defs/deck"
+    },
+    "threats": {
+      "$ref": "#/$defs/deck",
+      "description": "Shared threat deck for final discussion; optional in older v1 packs."
+    },
+    "abilities": {
+      "$ref": "#/$defs/abilities"
+    },
+    "characterGeneration": {
+      "$ref": "#/$defs/characterGeneration"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+    },
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "attributes": {
+          "type": "object",
+          "maxProperties": 20,
+          "propertyNames": {
+            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "deck": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/$defs/card"
+      }
+    },
+    "category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "cards"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "cards": {
+          "$ref": "#/$defs/deck"
+        }
+      }
+    },
+    "ability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "text",
+        "effect",
+        "uses"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "effect": {
+          "enum": [
+            "reveal_self",
+            "reveal_target",
+            "redraw_self",
+            "extra_ballot",
+            "reveal",
+            "redraw",
+            "replace",
+            "discard",
+            "swap",
+            "shuffle",
+            "steal",
+            "vote_weight",
+            "cancel_vote",
+            "double_against",
+            "forbid_vote",
+            "revote",
+            "force_reveal",
+            "silence",
+            "bunker_redraw",
+            "bunker_discard",
+            "bunker_steal",
+            "add_threat",
+            "protect_vote",
+            "manual"
+          ]
+        },
+        "uses": {
+          "const": 1
+        },
+        "options": {
+          "$ref": "#/$defs/abilityOptions"
+        }
+      }
+    },
+    "abilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "cards"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "cards": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/ability"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "enabled": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "cards": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roundCount",
+        "minPlayers",
+        "maxPlayers",
+        "firstRevealCategory",
+        "speechSeconds",
+        "discussionSeconds",
+        "votesPerVoter",
+        "lastExiledVotes",
+        "allowSelfVote",
+        "votingSchedule"
+      ],
+      "properties": {
+        "roundCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "minPlayers": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 16
+        },
+        "maxPlayers": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 16
+        },
+        "firstRevealCategory": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "speechSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600
+        },
+        "discussionSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600
+        },
+        "votesPerVoter": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "lastExiledVotes": {
+          "type": "boolean"
+        },
+        "allowSelfVote": {
+          "type": "boolean"
+        },
+        "votingSchedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^([4-9]|1[0-6])$": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 20,
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4
+              }
+            }
+          }
+        }
+      }
+    },
+    "abilityOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timing": {
+          "enum": [
+            "any",
+            "before_vote",
+            "during_vote",
+            "after_vote"
+          ]
+        },
+        "target": {
+          "enum": [
+            "self",
+            "other",
+            "any",
+            "neighbor",
+            "all",
+            "none"
+          ]
+        },
+        "actor": {
+          "enum": [
+            "active",
+            "exiled",
+            "any"
+          ]
+        },
+        "targetState": {
+          "enum": [
+            "active",
+            "exiled",
+            "any"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "visibility": {
+          "enum": [
+            "any",
+            "open",
+            "closed"
+          ]
+        },
+        "duration": {
+          "enum": [
+            "vote",
+            "round",
+            "game"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "none",
+            "left",
+            "right",
+            "first_revealed",
+            "youngest",
+            "oldest"
+          ]
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "replacement": {
+          "$ref": "#/$defs/card"
+        },
+        "compensation": {
+          "type": "boolean"
+        }
+      }
+    },
+    "characterGeneration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category"
+      ],
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/id"
+        },
+        "species": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "femalePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "lgbtPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minAge": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999
+        },
+        "maxAge": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999
+        },
+        "childfreePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "speciesRules": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/$defs/speciesGeneration"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "species",
+            "femalePercent",
+            "lgbtPercent",
+            "minAge",
+            "maxAge"
+          ],
+          "not": {
+            "required": [
+              "speciesRules"
+            ]
+          }
+        },
+        {
+          "required": [
+            "speciesRules"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "species"
+                ]
+              },
+              {
+                "required": [
+                  "femalePercent"
+                ]
+              },
+              {
+                "required": [
+                  "lgbtPercent"
+                ]
+              },
+              {
+                "required": [
+                  "minAge"
+                ]
+              },
+              {
+                "required": [
+                  "maxAge"
+                ]
+              },
+              {
+                "required": [
+                  "childfreePercent"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "speciesGeneration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "species",
+        "femalePercent",
+        "lgbtPercent",
+        "minAge",
+        "maxAge"
+      ],
+      "properties": {
+        "species": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "femalePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "lgbtPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minAge": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999
+        },
+        "maxAge": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999
+        },
+        "childfreePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        }
+      }
+    }
+  }
+}

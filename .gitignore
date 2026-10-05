@@ -1,0 +1,14 @@
+/target/
+/tmp/
+/output/
+/dist/
+/.idea/
+*.iml
+/.vscode/
+/.env
+/.env.*
+__pycache__/
+*.py[cod]
+*.log
+.DS_Store
+Thumbs.db
