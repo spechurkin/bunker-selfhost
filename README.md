@@ -174,7 +174,8 @@
 
 ### Готовый ZIP из Releases
 
-Скачайте `bunker-selfhost-<версия>.zip` из [GitHub Releases](https://github.com/spechurkin/bunker-selfhost/releases/latest)
+Скачайте `bunker-selfhost-<версия>.zip`
+из [GitHub Releases](https://github.com/spechurkin/bunker-selfhost/releases/latest)
 и распакуйте целиком. Установите **Java 21**, затем на Windows запустите `start.cmd`,
 а на Linux или macOS выполните `sh start.sh`. Откройте [http://localhost:8080](http://localhost:8080).
 Готовая сборка содержит `bunker-server.jar`, команды запуска, короткую инструкцию и схему `.bunker`;
@@ -216,8 +217,10 @@ java -jar target/bunker-server.jar
 
 **В одной сети:** подключите устройства к одной домашней сети. Узнайте локальный IP компьютера организатора
 (на Windows он показан в `ipconfig` как IPv4-адрес) и отправьте друзьям адрес вида
-`http://192.168.1.25:8080`, подставив свой IP. Разрешите подключение к приложению в брандмауэре вашей частной сети,
-если система запросит доступ.
+`http://192.168.1.25:8080`, подставив свой IP. Могут потребоваться сторонние программы,
+вроде [Porthole](https://store.steampowered.com/app/4963920/Porthole__Local_Port_Sharing/)
+или [Radmin VPN](https://www.radmin-vpn.com/).
+Разрешите подключение к приложению в брандмауэре вашей частной сети, если система запросит доступ.
 
 **Из разных сетей:** используйте сервер с доступным друзьям адресом или общую VPN-сеть,
 через которую доступен компьютер организатора. Один код комнаты не делает домашний сервер доступным через интернет.
